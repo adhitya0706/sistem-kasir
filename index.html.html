@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pancong Lumer Kenangan - POS & Cloud System</title>
+    <title>Pancong Lumer Kenangan - POS & Stok System</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome Icons -->
@@ -27,7 +27,12 @@
     <!-- Toast / Alert Container -->
     <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <div id="app" class="min-h-screen flex flex-col"></div>
+    <div id="app" class="min-h-screen flex flex-col items-center justify-center">
+        <div class="text-center space-y-3">
+            <i class="fa-solid fa-spinner fa-spin text-4xl text-blue-600"></i>
+            <p class="text-xs font-bold text-slate-600 uppercase tracking-wider">Memuat Sistem Pancong Lumer (Cloud)...</p>
+        </div>
+    </div>
 
     <script>
         // ==========================================
@@ -44,17 +49,15 @@
             measurementId: "G-G12887MBD6"
         };
 
-        // Inisialisasi Firebase Realtime Database
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
         }
         const database = firebase.database();
-
-        // Database Default jika kosong
+        
         const defaultDB = {
             currentUser: null,
             currentShift: { employeeName: "", outletName: "", startTime: null },
-            outlets: ["Outlet Sidoagung", "Outlet Central", "Outlet Margonda", "Outlet Tebet"],
+            outlets: ["Outlet Tegalrejo", "Outlet Sidoagung", "Outlet Central", "Outlet Margonda", "Outlet Tebet"],
             users: [
                 { username: "admin", pin: "1234", name: "Admin Utama", role: "admin" },
                 { username: "karyawan", pin: "5678", name: "Aditya", role: "karyawan" }
@@ -64,9 +67,23 @@
                 { id: "rm2", name: "Telur Ayam", category: "Bahan Utama & Adonan", stock: 4, unit: "butir" },
                 { id: "rm3", name: "Choco Crunchy", category: "Variasi Topping & Glaze", stock: 369, unit: "gr" },
                 { id: "rm4", name: "Cheese Crunchy", category: "Variasi Topping & Glaze", stock: 464, unit: "gr" },
-                { id: "rm5", name: "Glaze Cokelat", category: "Variasi Topping & Glaze", stock: 392, unit: "gr" },
-                { id: "rm6", name: "Glaze Tiramisu", category: "Variasi Topping & Glaze", stock: 659, unit: "gr" },
-                { id: "rm7", name: "Box Logo", category: "Kemasan & Dus", stock: 23, unit: "pcs" }
+                { id: "rm5", name: "Cokelat", category: "Variasi Topping & Glaze", stock: 392, unit: "gr" },
+                { id: "rm6", name: "Tiramisu", category: "Variasi Topping & Glaze", stock: 659, unit: "gr" },
+                { id: "rm7", name: "Green Tea", category: "Variasi Topping & Glaze", stock: 373, unit: "gr" },
+                { id: "rm8", name: "Pandan", category: "Variasi Topping & Glaze", stock: 266, unit: "gr" },
+                { id: "rm9", name: "Durian", category: "Variasi Topping & Glaze", stock: 218, unit: "gr" },
+                { id: "rm10", name: "Blueberry", category: "Variasi Topping & Glaze", stock: 412, unit: "gr" },
+                { id: "rm11", name: "Red Velvet", category: "Variasi Topping & Glaze", stock: 300, unit: "gr" },
+                { id: "rm12", name: "Keju", category: "Variasi Topping & Glaze", stock: 519, unit: "gr" },
+                { id: "rm13", name: "Susu", category: "Variasi Topping & Glaze", stock: 213, unit: "ml" },
+                { id: "rm14", name: "Oreo", category: "Variasi Topping & Glaze", stock: 166, unit: "gr" },
+                { id: "rm15", name: "Chips", category: "Variasi Topping & Glaze", stock: 218, unit: "gr" },
+                { id: "rm16", name: "Kacang", category: "Variasi Topping & Glaze", stock: 185, unit: "gr" },
+                { id: "rm17", name: "Milo", category: "Variasi Topping & Glaze", stock: 4, unit: "bks" },
+                { id: "rm18", name: "Box Logo", category: "Kemasan & Dus", stock: 23, unit: "pcs" },
+                { id: "rm19", name: "Box Polos", category: "Kemasan & Dus", stock: 4, unit: "pcs" },
+                { id: "rm20", name: "Sendok Bebek", category: "Kemasan & Dus", stock: 126, unit: "gr" },
+                { id: "rm21", name: "Kresek Kecil", category: "Kemasan & Dus", stock: 115, unit: "gr" }
             ],
             products: [
                 { id: "p1", name: "ORSS (Original Susu)", price: 8000, stock: 20, category: "Original", topping: "Susu" },
@@ -80,37 +97,44 @@
             selectedOutletFilter: "All"
         };
 
-        // Mengambil data dari Firebase Realtime Database
         let globalDB = JSON.parse(JSON.stringify(defaultDB));
+
+        function getDB() {
+            return globalDB;
+        }
 
         function fetchDBFromCloud(callback) {
             database.ref("pancong_db").once("value").then((snapshot) => {
                 const val = snapshot.val();
                 if (val) {
                     globalDB = val;
+                    if (!globalDB.submittedShiftReports) globalDB.submittedShiftReports = [];
+                    if (!globalDB.transactions) globalDB.transactions = [];
                 } else {
                     database.ref("pancong_db").set(defaultDB);
                     globalDB = JSON.parse(JSON.stringify(defaultDB));
                 }
                 if (callback) callback(globalDB);
             }).catch((err) => {
-                console.error("Gagal memuat database:", err);
+                console.error("Gagal memuat database cloud:", err);
                 if (callback) callback(globalDB);
             });
         }
 
-        function saveDBToCloud(data, callback) {
+        function saveDB(data, callback) {
             globalDB = data;
             database.ref("pancong_db").set(data).then(() => {
+                renderApp();
                 if (callback) callback();
             }).catch((err) => {
-                console.error("Gagal menyimpan ke database:", err);
+                console.error("Gagal menyimpan ke cloud:", err);
             });
         }
 
         function showAlert(title, message, type = "info") {
             const container = document.getElementById("toast-container");
             if (!container) return;
+
             const toast = document.createElement("div");
             const bgClass = type === "error" ? "bg-rose-600 text-white" : type === "success" ? "bg-emerald-600 text-white" : "bg-blue-600 text-white";
             toast.className = `${bgClass} px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 transition-all duration-300 pointer-events-auto`;
@@ -128,17 +152,17 @@
             }, 3000);
         }
 
-        function renderLoginView() {
+        function renderLoginView(db) {
             const appEl = document.getElementById("app");
             appEl.innerHTML = `
-                <div class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-blue-950 to-blue-900">
+                <div class="min-h-screen w-full flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-blue-950 to-blue-900">
                     <div class="bg-white rounded-3xl shadow-2xl border border-blue-100 p-8 max-w-md w-full text-slate-800">
                         <div class="text-center mb-8">
                             <div class="w-20 h-20 bg-blue-600 text-white rounded-2xl mx-auto flex items-center justify-center text-4xl mb-4 shadow-lg ring-4 ring-blue-100">
                                 <i class="fa-solid fa-stroopwafel"></i>
                             </div>
                             <h1 class="text-2xl font-black text-blue-900 uppercase tracking-wide">PANCONG <span class="text-blue-600">LUMER</span></h1>
-                            <p class="text-xs text-slate-500 font-semibold mt-1">Sistem POS & Laporan Shift (Cloud DB)</p>
+                            <p class="text-xs text-slate-500 font-semibold mt-1">Sistem POS & Generator Laporan WA</p>
                         </div>
 
                         <form id="login-form" class="space-y-4">
@@ -150,16 +174,10 @@
                                 <label class="block text-xs font-bold uppercase tracking-wider text-blue-900 mb-1">PIN Akses (4 Digit)</label>
                                 <input type="password" id="login-pin" maxlength="4" required placeholder="1234 / 5678" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 font-semibold text-slate-900">
                             </div>
-
-                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-3.5 rounded-xl shadow-lg transition flex items-center justify-center space-x-2 text-sm">
-                                <span>MASUK KE SISTEM</span>
-                                <i class="fa-solid fa-arrow-right"></i>
+                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-3.5 rounded-xl shadow-lg transition text-sm">
+                                MASUK KE SISTEM
                             </button>
                         </form>
-
-                        <div class="mt-6 pt-6 border-t border-slate-100 text-center text-xs text-slate-500 space-y-1 bg-slate-50 p-3 rounded-2xl">
-                            <p><strong class="text-blue-900">Akun Demo:</strong> Admin (<code class="bg-blue-100 text-blue-800 px-1 rounded font-bold">admin</code> / <code class="bg-blue-100 text-blue-800 px-1 rounded font-bold">1234</code>) | Karyawan (<code class="bg-blue-100 text-blue-800 px-1 rounded font-bold">karyawan</code> / <code class="bg-blue-100 text-blue-800 px-1 rounded font-bold">5678</code>)</p>
-                        </div>
                     </div>
                 </div>
             `;
@@ -169,13 +187,11 @@
                 const username = document.getElementById("login-username").value.trim();
                 const pin = document.getElementById("login-pin").value.trim();
 
-                fetchDBFromCloud((db) => {
-                    const user = db.users.find(u => u.username === username && u.pin === pin);
+                fetchDBFromCloud((freshDB) => {
+                    const user = freshDB.users.find(u => u.username === username && u.pin === pin);
                     if (user) {
-                        db.currentUser = user;
-                        saveDBToCloud(db, () => {
-                            renderApp();
-                        });
+                        freshDB.currentUser = user;
+                        saveDB(freshDB);
                     } else {
                         showAlert("Login Gagal", "Username atau PIN salah.", "error");
                     }
@@ -186,14 +202,13 @@
         function renderShiftModal(db) {
             const appEl = document.getElementById("app");
             appEl.innerHTML = `
-                <div class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-blue-950 to-blue-900">
+                <div class="min-h-screen w-full flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-blue-950 to-blue-900">
                     <div class="bg-white rounded-3xl shadow-2xl border border-blue-100 p-8 max-w-md w-full text-slate-800">
                         <div class="text-center mb-6">
                             <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl mx-auto flex items-center justify-center text-2xl mb-3">
                                 <i class="fa-solid fa-id-card-clip"></i>
                             </div>
                             <h2 class="text-xl font-black text-blue-950 uppercase">Presensi Shift Karyawan</h2>
-                            <p class="text-xs text-slate-500 mt-1">Masukkan nama & pilih outlet jaga hari ini</p>
                         </div>
                         <form id="shift-form" class="space-y-4">
                             <div>
@@ -221,128 +236,438 @@
                 if (!empName) return showAlert("Wajib Diisi", "Masukkan nama karyawan.", "error");
 
                 db.currentShift = { employeeName: empName, outletName: outlet, startTime: new Date().toISOString() };
-                saveDBToCloud(db, () => renderApp());
+                saveDB(db);
             });
         }
 
         function renderApp() {
-            fetchDBFromCloud((db) => {
-                const appEl = document.getElementById("app");
-                if (!db.currentUser) {
-                    renderLoginView();
-                    return;
-                }
-                if (db.currentUser.role === 'karyawan' && !db.currentShift.employeeName) {
-                    renderShiftModal(db);
-                    return;
-                }
-                if (db.currentUser.role === 'admin' && db.activeTab === 'pos') {
-                    db.activeTab = 'admin_monitor';
-                    saveDBToCloud(db);
-                }
+            const db = getDB();
+            const appEl = document.getElementById("app");
 
-                appEl.innerHTML = `
-                    <header class="bg-blue-900 text-white sticky top-0 z-30 shadow-md">
-                        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-                            <div class="flex items-center space-x-3">
-                                <div class="w-10 h-10 bg-white text-blue-900 rounded-xl flex items-center justify-center font-bold shadow-md">
-                                    <i class="fa-solid fa-stroopwafel text-blue-600 text-xl"></i>
-                                </div>
-                                <div>
-                                    <h1 class="font-black text-white text-base leading-tight uppercase tracking-wider">PANCONG <span class="text-blue-300">LUMER</span></h1>
-                                    <p class="text-[11px] text-blue-200 font-semibold">
-                                        <span>${db.currentUser.role === 'karyawan' ? `Outlet: ${db.currentShift.outletName}` : 'Pusat Kontrol Admin'}</span>
-                                    </p>
-                                </div>
+            if (!db.currentUser) {
+                renderLoginView(db);
+                return;
+            }
+            if (db.currentUser.role === 'karyawan' && !db.currentShift.employeeName) {
+                renderShiftModal(db);
+                return;
+            }
+            if (db.currentUser.role === 'admin' && db.activeTab === 'pos') {
+                db.activeTab = 'generator';
+                saveDB(db);
+                return;
+            }
+
+            appEl.className = "min-h-screen flex flex-col";
+            appEl.innerHTML = `
+                <header class="bg-blue-900 text-white sticky top-0 z-30 shadow-md">
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 bg-white text-blue-900 rounded-xl flex items-center justify-center font-bold shadow-md">
+                                <i class="fa-solid fa-stroopwafel text-blue-600 text-xl"></i>
                             </div>
-
-                            <div class="flex items-center space-x-3">
-                                <div class="text-right hidden sm:block">
-                                    <p class="text-xs font-bold text-white">${db.currentUser.role === 'karyawan' ? db.currentShift.employeeName : db.currentUser.name}</p>
-                                    <span class="text-[10px] uppercase font-black px-2 py-0.5 bg-blue-800 text-blue-200 rounded-full">${db.currentUser.role === 'karyawan' ? 'Staff' : 'Admin'}</span>
-                                </div>
-                                <button onclick="logoutApp()" class="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition">
-                                    <i class="fa-solid fa-right-from-bracket"></i> Keluar
-                                </button>
+                            <div>
+                                <h1 class="font-black text-white text-base leading-tight uppercase tracking-wider">PANCONG <span class="text-blue-300">LUMER</span></h1>
+                                <p class="text-[11px] text-blue-200 font-semibold">${db.currentUser.role === 'karyawan' ? `Outlet: ${db.currentShift.outletName}` : 'Pusat Kontrol Admin'}</p>
                             </div>
                         </div>
-                    </header>
 
-                    <nav class="bg-white border-b border-slate-200 shadow-xs">
-                        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-2 overflow-x-auto py-2.5">
-                            ${db.currentUser.role === 'karyawan' ? `
-                                <button onclick="switchTab('pos')" class="px-4 py-2 rounded-xl text-xs font-bold transition ${db.activeTab === 'pos' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}">Kasir POS</button>
-                            ` : ''}
-                            ${db.currentUser.role === 'admin' ? `
-                                <button onclick="switchTab('admin_monitor')" class="px-4 py-2 rounded-xl text-xs font-bold transition ${db.activeTab === 'admin_monitor' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}">Pantau Laporan Shift Karyawan</button>
-                            ` : ''}
-                            <button onclick="switchTab('stock')" class="px-4 py-2 rounded-xl text-xs font-bold transition ${db.activeTab === 'stock' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}">Rekap Stok</button>
-                            <button onclick="switchTab('sales')" class="px-4 py-2 rounded-xl text-xs font-bold transition ${db.activeTab === 'sales' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}">Penjualan Hari Ini</button>
+                        <div class="flex items-center space-x-3">
+                            <div class="text-right hidden sm:block">
+                                <p class="text-xs font-bold text-white">${db.currentUser.role === 'karyawan' ? db.currentShift.employeeName : db.currentUser.name}</p>
+                                <span class="text-[10px] uppercase font-black px-2 py-0.5 bg-blue-800 text-blue-200 rounded-full">${db.currentUser.role === 'karyawan' ? 'Staff' : 'Admin'}</span>
+                            </div>
+                            <button id="btn-logout" class="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition">
+                                <i class="fa-solid fa-right-from-bracket"></i> Keluar
+                            </button>
                         </div>
-                    </nav>
+                    </div>
+                </header>
 
-                    <main id="main-content" class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8"></main>
-                `;
-                renderActiveTabContent(db);
+                <nav class="bg-white border-b border-slate-200 shadow-xs">
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-2 overflow-x-auto py-2.5">
+                        ${db.currentUser.role === 'karyawan' ? `<button onclick="switchTab('pos')" class="px-4 py-2 rounded-xl text-xs font-bold transition ${db.activeTab === 'pos' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}"><i class="fa-solid fa-cash-register mr-1"></i> Kasir POS</button>` : ''}
+                        <button onclick="switchTab('generator')" class="px-4 py-2 rounded-xl text-xs font-bold transition ${db.activeTab === 'generator' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Generator Laporan WA</button>
+                        <button onclick="switchTab('stock')" class="px-4 py-2 rounded-xl text-xs font-bold transition ${db.activeTab === 'stock' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}"><i class="fa-solid fa-boxes-stacked mr-1"></i> Rekap Stok</button>
+                        <button onclick="switchTab('sales')" class="px-4 py-2 rounded-xl text-xs font-bold transition ${db.activeTab === 'sales' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}"><i class="fa-solid fa-receipt mr-1"></i> Penjualan Hari Ini</button>
+                    </div>
+                </nav>
+
+                <main id="main-content" class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8"></main>
+            `;
+
+            document.getElementById("btn-logout").addEventListener("click", () => {
+                fetchDBFromCloud((freshDB) => {
+                    freshDB.currentUser = null;
+                    freshDB.currentShift = { employeeName: "", outletName: "", startTime: null };
+                    saveDB(freshDB);
+                });
             });
+
+            renderActiveTabContent();
         }
 
-        function logoutApp() {
-            fetchDBFromCloud((db) => {
-                db.currentUser = null;
-                db.currentShift = { employeeName: "", outletName: "", startTime: null };
-                saveDBToCloud(db, () => renderLoginView());
+        window.switchTab = function(tabName) {
+            fetchDBFromCloud((freshDB) => {
+                freshDB.activeTab = tabName;
+                saveDB(freshDB);
             });
-        }
+        };
 
-        function switchTab(tabName) {
-            fetchDBFromCloud((db) => {
-                db.activeTab = tabName;
-                saveDBToCloud(db, () => renderApp());
-            });
-        }
-
-        function renderActiveTabContent(db) {
+        function renderActiveTabContent() {
+            const db = getDB();
             const mainEl = document.getElementById("main-content");
             if (!mainEl) return;
 
-            if (db.activeTab === "pos" && db.currentUser.role === 'karyawan') {
-                mainEl.innerHTML = `
-                    <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs">
-                        <h3 class="font-black text-lg text-blue-900 uppercase mb-2"><i class="fa-solid fa-cash-register mr-2"></i>Halaman Kasir POS</h3>
-                        <p class="text-xs text-slate-500 font-semibold">Sistem POS Siap Digunakan untuk Outlet ${db.currentShift.outletName}.</p>
-                    </div>
-                `;
-            } else if (db.activeTab === "admin_monitor" && db.currentUser.role === 'admin') {
-                mainEl.innerHTML = `
-                    <div class="space-y-6">
-                        <div class="bg-blue-900 text-white p-6 rounded-3xl shadow-md">
-                            <h2 class="font-black text-xl uppercase">Pusat Pantauan Laporan Shift Karyawan</h2>
-                            <p class="text-xs text-blue-200 mt-1">Laporan dari staf outlet akan masuk secara real-time di sini.</p>
-                        </div>
-                        <div class="bg-white rounded-3xl p-6 shadow-xs border border-slate-200">
-                            <h3 class="font-bold text-sm mb-4">Daftar Laporan Shift Masuk (${db.submittedShiftReports.length})</h3>
-                            ${db.submittedShiftReports.length === 0 ? '<p class="text-xs text-slate-400">Belum ada laporan shift yang dikirim karyawan.</p>' : 
-                                db.submittedShiftReports.map(r => `
-                                    <div class="p-4 bg-slate-50 rounded-2xl border mb-3 flex justify-between items-center text-xs">
-                                        <div>
-                                            <p class="font-bold text-blue-900">${r.employeeName} -${r.outletName}</p>
-                                            <p class="text-slate-500">${r.date} \vert{} Omzet: Rp${(r.keuangan?.omzetTotal || 0).toLocaleString('id-ID')}</p>
-                                        </div>
-                                        <span class="px-2 py-1 bg-emerald-100 text-emerald-800 font-bold rounded">${r.status}</span>
-                                    </div>
-                                `).join('')}
-                        </div>
-                    </div>
-                `;
-            } else {
-                mainEl.innerHTML = `<div class="bg-white p-6 rounded-2xl shadow-xs">Fitur aktif untuk tab: ${db.activeTab}</div>`;
-            }
+            if (db.activeTab === "pos") mainEl.innerHTML = renderPOSView(db);
+            else if (db.activeTab === "generator") { mainEl.innerHTML = renderGeneratorView(db); initGeneratorListeners(db); }
+            else if (db.activeTab === "stock") mainEl.innerHTML = renderStockView(db);
+            else if (db.activeTab === "sales") mainEl.innerHTML = renderSalesView(db);
         }
 
-        window.onload = function() {
-            renderLoginView();
+        // ==========================================
+        // GENERATOR LAPORAN WHATSAPP LENGKAP
+        // ==========================================
+        function renderGeneratorView(db) {
+            const todayStr = "10 Mei 2026";
+            const outletName = db.currentUser.role === 'karyawan' ? db.currentShift.outletName : "Outlet Tegalrejo";
+            const staffName = db.currentUser.role === 'karyawan' ? db.currentShift.employeeName : "Aditya";
+
+            return `
+                <div class="space-y-6 text-slate-800">
+                    <div class="bg-blue-900 text-white p-6 rounded-3xl shadow-md">
+                        <h2 class="font-black text-xl uppercase"><i class="fa-solid fa-wand-magic-sparkles mr-2"></i> Generator Laporan WhatsApp Manual</h2>
+                        <p class="text-xs text-blue-200 mt-1">Isi data absensi, keuangan, penjualan, pemakaian glaze, stok barang, dan order stok di bawah ini. Teks laporan WA akan otomatis tersusun rapi untuk disalin!</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        <!-- KOLOM FORM INPUT (7 Kolom) -->
+                        <div class="lg:col-span-7 space-y-4 text-xs">
+                            <!-- Section 1: Info Umum -->
+                            <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-3">
+                                <h3 class="font-black text-blue-900 text-sm uppercase border-b pb-2">1. Informasi Shift & Outlet</h3>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block font-bold text-slate-700 mb-1">Tanggal Laporan</label>
+                                        <input type="text" id="gen-date" value="${todayStr}" class="w-full bg-slate-50 border rounded-xl p-2.5 font-bold">
+                                    </div>
+                                    <div>
+                                        <label class="block font-bold text-slate-700 mb-1">Nama Outlet</label>
+                                        <input type="text" id="gen-outlet" value="${outletName}" class="w-full bg-slate-50 border rounded-xl p-2.5 font-bold">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-3 gap-2 pt-1">
+                                    <div><label class="font-bold text-slate-600">Jam Buka</label><input type="text" id="gen-buka" value="16:00" class="w-full bg-slate-50 border rounded-xl p-2"></div>
+                                    <div><label class="font-bold text-slate-600">Jam Tutup</label><input type="text" id="gen-tutup" value="23:00" class="w-full bg-slate-50 border rounded-xl p-2"></div>
+                                    <div><label class="font-bold text-slate-600">Nama Staff</label><input type="text" id="gen-staff" value="${staffName}" class="w-full bg-slate-50 border rounded-xl p-2"></div>
+                                </div>
+                            </div>
+
+                            <!-- Section 2: Keuangan -->
+                            <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-3">
+                                <h3 class="font-black text-blue-900 text-sm uppercase border-b pb-2">2. Rekap Keuangan & Omzet</h3>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <div><label class="font-bold text-slate-600">Tunai (Rp)</label><input type="number" id="gen-tunai" value="43000" class="w-full bg-slate-50 border rounded-xl p-2 font-bold text-blue-700"></div>
+                                    <div><label class="font-bold text-slate-600">QRIS (Rp)</label><input type="number" id="gen-qris" value="0" class="w-full bg-slate-50 border rounded-xl p-2 font-bold text-blue-700"></div>
+                                    <div><label class="font-bold text-slate-600">Online (Rp)</label><input type="number" id="gen-online" value="12000" class="w-full bg-slate-50 border rounded-xl p-2 font-bold text-blue-700"></div>
+                                </div>
+                                <div class="grid grid-cols-3 gap-2 pt-1">
+                                    <div><label class="font-bold text-slate-600">Pengeluaran (Rp)</label><input type="number" id="gen-keluar" value="0" class="w-full bg-slate-50 border rounded-xl p-2 font-bold text-rose-600"></div>
+                                    <div><label class="font-bold text-slate-600">Setor Tunai (Rp)</label><input type="number" id="gen-setor" value="43000" class="w-full bg-slate-50 border rounded-xl p-2 font-bold text-emerald-600"></div>
+                                    <div><label class="font-bold text-slate-600">Bonus Pegawai (Rp)</label><input type="number" id="gen-bonus" value="0" class="w-full bg-slate-50 border rounded-xl p-2 font-bold"></div>
+                                </div>
+                            </div>
+
+                            <!-- Section 3: Penjualan Pancong -->
+                            <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-3">
+                                <h3 class="font-black text-blue-900 text-sm uppercase border-b pb-2">3. Penjualan Pancong & Glaze/Topping</h3>
+                                <div class="grid grid-cols-4 gap-2">
+                                    <div><label class="font-bold text-slate-600">Adonan</label><input type="number" id="gen-adonan" value="1" class="w-full bg-slate-50 border rounded-xl p-2 font-bold"></div>
+                                    <div><label class="font-bold text-slate-600">Terjual</label><input type="number" id="gen-terjual" value="5" class="w-full bg-slate-50 border rounded-xl p-2 font-bold text-emerald-600"></div>
+                                    <div><label class="font-bold text-slate-600">Gratis</label><input type="number" id="gen-gratis" value="0" class="w-full bg-slate-50 border rounded-xl p-2 font-bold"></div>
+                                    <div><label class="font-bold text-slate-600">Sisa</label><input type="number" id="gen-sisa" value="0" class="w-full bg-slate-50 border rounded-xl p-2 font-bold text-amber-600"></div>
+                                </div>
+                                <div class="grid grid-cols-3 gap-2 pt-2">
+                                    <div><label class="font-bold text-slate-600">Glaze Cokelat</label><input type="number" id="gl-cokelat" value="0" class="w-full bg-slate-50 border rounded-xl p-2"></div>
+                                    <div><label class="font-bold text-slate-600">Glaze Tiramisu</label><input type="number" id="gl-tiramisu" value="0" class="w-full bg-slate-50 border rounded-xl p-2"></div>
+                                    <div><label class="font-bold text-slate-600">Glaze Green Tea</label><input type="number" id="gl-greentea" value="0" class="w-full bg-slate-50 border rounded-xl p-2"></div>
+                                    <div><label class="font-bold text-slate-600">Glaze Durian</label><input type="number" id="gl-durian" value="0" class="w-full bg-slate-50 border rounded-xl p-2"></div>
+                                    <div><label class="font-bold text-slate-600">Glaze Pandan</label><input type="number" id="gl-pandan" value="0" class="w-full bg-slate-50 border rounded-xl p-2"></div>
+                                    <div><label class="font-bold text-slate-600">Glaze Red Velvet</label><input type="number" id="gl-redvelvet" value="0" class="w-full bg-slate-50 border rounded-xl p-2"></div>
+                                    <div><label class="font-bold text-slate-600">Glaze Blueberry</label><input type="number" id="gl-blueberry" value="0" class="w-full bg-slate-50 border rounded-xl p-2"></div>
+                                    <div><label class="font-bold text-slate-600">Choco Crunchy</label><input type="number" id="gl-chococr" value="3" class="w-full bg-slate-50 border rounded-xl p-2"></div>
+                                    <div><label class="font-bold text-slate-600">Cheese Crunchy</label><input type="number" id="gl-cheesecr" value="0" class="w-full bg-slate-50 border rounded-xl p-2"></div>
+                                </div>
+                                <div class="grid grid-cols-6 gap-2 pt-2 border-t border-slate-100">
+                                    <div><label class="font-bold text-slate-600 text-[10px]">Keju</label><input type="number" id="tp-keju" value="0" class="w-full bg-slate-50 border rounded-xl p-2"></div>
+                                    <div><label class="font-bold text-slate-600 text-[10px]">Chocochips</label><input type="number" id="tp-chips" value="0" class="w-full bg-slate-50 border rounded-xl p-2"></div>
+                                    <div><label class="font-bold text-slate-600 text-[10px]">Kacang</label><input type="number" id="tp-kacang" value="0" class="w-full bg-slate-50 border rounded-xl p-2"></div>
+                                    <div><label class="font-bold text-slate-600 text-[10px]">Oreo</label><input type="number" id="tp-oreo" value="0" class="w-full bg-slate-50 border rounded-xl p-2"></div>
+                                    <div><label class="font-bold text-slate-600 text-[10px]">Milo</label><input type="number" id="tp-milo" value="0" class="w-full bg-slate-50 border rounded-xl p-2"></div>
+                                    <div><label class="font-bold text-slate-600 text-[10px]">Susu</label><input type="number" id="tp-susu" value="0" class="w-full bg-slate-50 border rounded-xl p-2"></div>
+                                </div>
+                            </div>
+
+                            <!-- Section 4: Rekap Stok & Order Stok -->
+                            <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-3">
+                                <h3 class="font-black text-blue-900 text-sm uppercase border-b pb-2">4. Stok Barang & Order Stok</h3>
+                                <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                                    <div><label class="font-bold text-[10px]">Adonan 250gr</label><input type="number" id="stk-adonan" value="4" class="w-full bg-slate-50 border rounded-xl p-1.5"></div>
+                                    <div><label class="font-bold text-[10px]">Telur Ayam</label><input type="number" id="stk-telur" value="4" class="w-full bg-slate-50 border rounded-xl p-1.5"></div>
+                                    <div><label class="font-bold text-[10px]">Choco Crunchy</label><input type="number" id="stk-chococr" value="369" class="w-full bg-slate-50 border rounded-xl p-1.5"></div>
+                                    <div><label class="font-bold text-[10px]">Cheese Crunchy</label><input type="number" id="stk-cheesecr" value="464" class="w-full bg-slate-50 border rounded-xl p-1.5"></div>
+                                    <div><label class="font-bold text-[10px]">Cokelat</label><input type="number" id="stk-cokelat" value="392" class="w-full bg-slate-50 border rounded-xl p-1.5"></div>
+                                    <div><label class="font-bold text-[10px]">Tiramisu</label><input type="number" id="stk-tiramisu" value="659" class="w-full bg-slate-50 border rounded-xl p-1.5"></div>
+                                    <div><label class="font-bold text-[10px]">Green Tea</label><input type="number" id="stk-greentea" value="373" class="w-full bg-slate-50 border rounded-xl p-1.5"></div>
+                                    <div><label class="font-bold text-[10px]">Pandan</label><input type="number" id="stk-pandan" value="266" class="w-full bg-slate-50 border rounded-xl p-1.5"></div>
+                                    <div><label class="font-bold text-[10px]">Durian</label><input type="number" id="stk-durian" value="218" class="w-full bg-slate-50 border rounded-xl p-1.5"></div>
+                                    <div><label class="font-bold text-[10px]">Blueberry</label><input type="number" id="stk-blueberry" value="412" class="w-full bg-slate-50 border rounded-xl p-1.5"></div>
+                                    <div><label class="font-bold text-[10px]">Red Velvet</label><input type="number" id="stk-redvelvet" value="300" class="w-full bg-slate-50 border rounded-xl p-1.5"></div>
+                                    <div><label class="font-bold text-[10px]">Keju</label><input type="number" id="stk-keju" value="519" class="w-full bg-slate-50 border rounded-xl p-1.5"></div>
+                                    <div><label class="font-bold text-[10px]">Susu</label><input type="number" id="stk-susu" value="213" class="w-full bg-slate-50 border rounded-xl p-1.5"></div>
+                                    <div><label class="font-bold text-[10px]">Oreo</label><input type="number" id="stk-oreo" value="166" class="w-full bg-slate-50 border rounded-xl p-1.5"></div>
+                                    <div><label class="font-bold text-[10px]">Chips</label><input type="number" id="stk-chips" value="218" class="w-full bg-slate-50 border rounded-xl p-1.5"></div>
+                                    <div><label class="font-bold text-[10px]">Kacang</label><input type="number" id="stk-kacang" value="185" class="w-full bg-slate-50 border rounded-xl p-1.5"></div>
+                                    <div><label class="font-bold text-[10px]">Milo</label><input type="number" id="stk-milo" value="4" class="w-full bg-slate-50 border rounded-xl p-1.5"></div>
+                                    <div><label class="font-bold text-[10px]">Box Logo</label><input type="number" id="stk-boxlogo" value="23" class="w-full bg-slate-50 border rounded-xl p-1.5"></div>
+                                    <div><label class="font-bold text-[10px]">Box Polos</label><input type="number" id="stk-boxpolos" value="4" class="w-full bg-slate-50 border rounded-xl p-1.5"></div>
+                                    <div><label class="font-bold text-[10px]">Sendok Bebek</label><input type="number" id="stk-sendok" value="126" class="w-full bg-slate-50 border rounded-xl p-1.5"></div>
+                                    <div><label class="font-bold text-[10px]">Kresek Kecil</label><input type="number" id="stk-kresek" value="115" class="w-full bg-slate-50 border rounded-xl p-1.5"></div>
+                                </div>
+                                <div class="pt-2">
+                                    <label class="block font-bold text-slate-700 mb-1">Catatan Order Stok (*#ORDER STOK#*)</label>
+                                    <textarea id="gen-orderstok" rows="2" placeholder="Contoh: Tambah Adonan 5 bks, Susu 2 kaleng..." class="w-full bg-slate-50 border rounded-xl p-2.5 text-slate-900 font-medium"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- KOLOM PREVIEW & COPY WA (5 Kolom) -->
+                        <div class="lg:col-span-5 space-y-4">
+                            <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-lg sticky top-20 flex flex-col justify-between space-y-4">
+                                <div class="flex justify-between items-center border-b pb-2">
+                                    <h3 class="font-black text-blue-950 text-sm uppercase">Preview Teks WhatsApp</h3>
+                                    <button onclick="copyGeneratorText()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition shadow-md flex items-center space-x-1.5">
+                                        <i class="fa-solid fa-copy"></i>
+                                        <span>Salin untuk WA</span>
+                                    </button>
+                                </div>
+                                <div id="wa-preview-box" class="bg-slate-900 text-emerald-400 font-mono text-[11px] p-4 rounded-2xl whitespace-pre-wrap h-[550px] overflow-y-auto leading-relaxed border border-slate-800">
+                                </div>
+                                <p class="text-[10px] text-slate-500 italic text-center">*Format disesuaikan otomatis dengan contoh laporan manual Anda.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function initGeneratorListeners(db) {
+            const inputs = document.querySelectorAll("#main-content input, #main-content textarea");
+            inputs.forEach(input => {
+                input.addEventListener("input", updateWAPreview);
+            });
+            updateWAPreview();
+        }
+
+        function updateWAPreview() {
+            const date = document.getElementById("gen-date")?.value || "10 Mei 2026";
+            const outlet = document.getElementById("gen-outlet")?.value || "Outlet Tegalrejo";
+            const buka = document.getElementById("gen-buka")?.value || "16:00";
+            const tutup = document.getElementById("gen-tutup")?.value || "23:00";
+            const staff = document.getElementById("gen-staff")?.value || "Aditya";
+
+            const tunai = parseFloat(document.getElementById("gen-tunai")?.value) || 0;
+            const qris = parseFloat(document.getElementById("gen-qris")?.value) || 0;
+            const online = parseFloat(document.getElementById("gen-online")?.value) || 0;
+            const pengeluaran = parseFloat(document.getElementById("gen-keluar")?.value) || 0;
+            const setor = parseFloat(document.getElementById("gen-setor")?.value) || 0;
+            const bonus = parseFloat(document.getElementById("gen-bonus")?.value) || 0;
+
+            const omzetTotal = tunai + qris + online;
+
+            const adonan = document.getElementById("gen-adonan")?.value || 1;
+            const terjual = document.getElementById("gen-terjual")?.value || 5;
+            const gratis = document.getElementById("gen-gratis")?.value || 0;
+            const sisa = document.getElementById("gen-sisa")?.value || 0;
+            const totalDibuat = parseInt(terjual) + parseInt(gratis) + parseInt(sisa);
+
+            const glCokelat = document.getElementById("gl-cokelat")?.value || 0;
+            const glTiramisu = document.getElementById("gl-tiramisu")?.value || 0;
+            const glGreenTea = document.getElementById("gl-greentea")?.value || 0;
+            const glDurian = document.getElementById("gl-durian")?.value || 0;
+            const glPandan = document.getElementById("gl-pandan")?.value || 0;
+            const glRedVelvet = document.getElementById("gl-redvelvet")?.value || 0;
+            const glBlueberry = document.getElementById("gl-blueberry")?.value || 0;
+            const glChocoCr = document.getElementById("gl-chococr")?.value || 3;
+            const glCheeseCr = document.getElementById("gl-cheesecr")?.value || 0;
+
+            const tpKeju = document.getElementById("tp-keju")?.value || 0;
+            const tpChips = document.getElementById("tp-chips")?.value || 0;
+            const tpKacang = document.getElementById("tp-kacang")?.value || 0;
+            const tpOreo = document.getElementById("tp-oreo")?.value || 0;
+            const tpMilo = document.getElementById("tp-milo")?.value || 0;
+            const tpSusu = document.getElementById("tp-susu")?.value || 0;
+
+            const stkAdonan = document.getElementById("stk-adonan")?.value || 4;
+            const stkTelur = document.getElementById("stk-telur")?.value || 4;
+            const stkChocoCr = document.getElementById("stk-chococr")?.value || 369;
+            const stkCheeseCr = document.getElementById("stk-cheesecr")?.value || 464;
+            const stkCokelat = document.getElementById("stk-cokelat")?.value || 392;
+            const stkTiramisu = document.getElementById("stk-tiramisu")?.value || 659;
+            const stkGreenTea = document.getElementById("stk-greentea")?.value || 373;
+            const stkPandan = document.getElementById("stk-pandan")?.value || 266;
+            const stkDurian = document.getElementById("stk-durian")?.value || 218;
+            const stkBlueberry = document.getElementById("stk-blueberry")?.value || 412;
+            const stkRedVelvet = document.getElementById("stk-redvelvet")?.value || 300;
+            const stkKeju = document.getElementById("stk-keju")?.value || 519;
+            const stkSusu = document.getElementById("stk-susu")?.value || 213;
+            const stkOreo = document.getElementById("stk-oreo")?.value || 166;
+            const stkChips = document.getElementById("stk-chips")?.value || 218;
+            const stkKacang = document.getElementById("stk-kacang")?.value || 185;
+            const stkMilo = document.getElementById("stk-milo")?.value || 4;
+            const stkBoxLogo = document.getElementById("stk-boxlogo")?.value || 23;
+            const stkBoxPolos = document.getElementById("stk-boxpolos")?.value || 4;
+            const stkSendok = document.getElementById("stk-sendok")?.value || 126;
+            const stkKresek = document.getElementById("stk-kresek")?.value || 115;
+
+            const orderStokNote = document.getElementById("gen-orderstok")?.value || "";
+
+            const text = `LAPORAN PENJUALAN ${outlet.replace("Outlet ", "").toUpperCase()}
+${date}
+__________________________
+
+*#ABSENSI (Sesuai Foto)#*
+Buka : ${buka}
+Tutup : ${tutup}
+Staff : ${staff}
+__________________________
+
+*#KEUANGAN#*
+# Omzet Total : Rp ${omzetTotal.toLocaleString('id-ID')}
+- Penjualan Tunai : Rp ${tunai.toLocaleString('id-ID')}
+- Penjualan Qris : Rp ${qris.toLocaleString('id-ID')}
+- Penjualan Online : Rp ${online.toLocaleString('id-ID')}
+
+# Pengeluaran Total : ${pengeluaran > 0 ? 'Rp ' + pengeluaran.toLocaleString('id-ID') : '-'}
+
+# Setor Tunai : Rp ${setor.toLocaleString('id-ID')}
+# Bonus Pegawai : Rp ${bonus.toLocaleString('id-ID')}
+________________________
+
+*#PENJUALAN PANCONG#*
+- Adonan Dibuat : ${adonan}
+- Porsi Terjual : ${terjual}
+- Porsi Gratis : ${gratis}
+- Porsi Sisa : ${sisa}
+
+Porsi Total Dibuat : ${totalDibuat}
+
+# Pemakaian Glaze Dasar
+- Glaze Cokelat : ${glCokelat}
+- Glaze Tiramisu : ${glTiramisu}
+- Glaze Green Tea : ${glGreenTea}
+- Glaze Durian : ${glDurian}
+- Glaze Pandan : ${glPandan}
+- Glaze Red Velvet : ${glRedVelvet}
+- Glaze Blueberry : ${glBlueberry}
+- Glaze Choco Crunchy : ${glChocoCr}
+- Glaze Cheese Crunchy : ${glCheeseCr}
+
+# Pemakaian Topping Tambahan
+- Keju : ${tpKeju}
+- Chocochips : ${tpChips}
+- Kacang : ${tpKacang}
+- Oreo : ${tpOreo}
+- Milo : ${tpMilo}
+- Susu : ${tpSusu}
+
+JAM ADONAN DAN MENU TERJUAL
+${outlet}
+${date}
+_________________________
+
+Jam 16:00
+Adonan 1/4
+1. TM 10k [Tunai]
+2. RV 10k [Tunai]
+3. CKC 12k [Online]
+4. TM 10k [Tunai]
+5. C+Oreo 13k [Tunai]
+Tunai: ${tunai.toLocaleString('id-ID')}k
+Online: ${online.toLocaleString('id-ID')}k
+Total: ${omzetTotal.toLocaleString('id-ID')}k
+
+_________________________
+📊 REKAP BATCH
+Tunai: Rp ${tunai.toLocaleString('id-ID')}
+QRIS: Rp ${qris.toLocaleString('id-ID')}
+Online: Rp ${online.toLocaleString('id-ID')}
+Total: Rp ${omzetTotal.toLocaleString('id-ID')}
+
+LAPORAN STOK BARANG ${outlet.replace("Outlet ", "").toUpperCase()}
+${date}
+*#REKAP STOK#*
+- Adonan 250gr : ${stkAdonan}
+- Telur Ayam : ${stkTelur}
+- Choco Crunchy : ${stkChocoCr}
+- Cheese Crunchy : ${stkCheeseCr}
+- Cokelat : ${stkCokelat}
+- Tiramisu : ${stkTiramisu}
+- Green Tea : ${stkGreenTea}
+- Pandan : ${stkPandan}
+- Durian : ${stkDurian}
+- Blueberry : ${stkBlueberry}
+- Red Velvet : ${stkRedVelvet}
+- Keju : ${stkKeju}
+- Susu : ${stkSusu}
+- Oreo : ${stkOreo}
+- Chips : ${stkChips}
+- Kacang : ${stkKacang}
+- Milo : ${stkMilo}
+- Box Logo : ${stkBoxLogo}
+- Box Polos : ${stkBoxPolos}
+- Sendok Bebek : ${stkSendok}
+- Kresek Kecil : ${stkKresek}
+
+_________________________
+*#ORDER STOK#*
+${orderStokNote}`;
+
+            const previewBox = document.getElementById("wa-preview-box");
+            if (previewBox) previewBox.textContent = text;
+        }
+
+        window.copyGeneratorText = function() {
+            const previewBox = document.getElementById("wa-preview-box");
+            if (!previewBox) return;
+            navigator.clipboard.writeText(previewBox.textContent).then(() => {
+                showAlert("Berhasil Disalin", "Teks laporan berhasil disalin ke clipboard. Silakan tempel (paste) di WhatsApp.", "success");
+            });
         };
+
+        // Standard POS & Stock Views
+        function renderPOSView(db) {
+            return `
+                <div class="bg-white p-8 rounded-3xl border border-slate-200 text-center space-y-4">
+                    <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl mx-auto flex items-center justify-center text-3xl">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    </div>
+                    <h3 class="text-xl font-black text-blue-900 uppercase">Gunakan Menu Generator Laporan WA</h3>
+                    <p class="text-xs text-slate-500 max-w-md mx-auto">Silakan klik menu <strong class="text-blue-900">Generator Laporan WA</strong> di navigasi atas untuk menyusun format teks rekap shift lengkap Anda.</p>
+                </div>
+            `;
+        }
+
+        function renderAdminMonitorView(db) { return `<div class="bg-white p-6 rounded-3xl">Pusat Monitor Admin Aktif</div>`; }
+        function renderStockView(db) { return `<div class="bg-white p-6 rounded-3xl">Rekap Stok Aktif</div>`; }
+        function renderSalesView(db) { return `<div class="bg-white p-6 rounded-3xl">Penjualan Hari Ini Aktif</div>`; }
+
+        window.addEventListener("DOMContentLoaded", () => {
+            fetchDBFromCloud(() => renderApp());
+        });
+        if (document.readyState === "complete" || document.readyState === "interactive") {
+            fetchDBFromCloud(() => renderApp());
+        }
     </script>
 </body>
 </html>
