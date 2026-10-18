@@ -31,20 +31,20 @@
 
     <script>
         // ==========================================
-        // KONFIGURASI FIREBASE ANDA
+        // KONFIGURASI FIREBASE RESMI ANDA
         // ==========================================
-        // Ganti bagian ini dengan konfigurasi Firebase project Anda nanti!
         const firebaseConfig = {
-            apiKey: "AIzaSyD-CONTOH_API_KEY_ANDA_GANTI",
-            authDomain: "pancong-lumer-kenangan.firebaseapp.com",
-            databaseURL: "https://pancong-lumer-kenangan-default-rtdb.firebaseio.com",
-            projectId: "pancong-lumer-kenangan",
-            storageBucket: "pancong-lumer-kenangan.appspot.com",
-            messagingSenderId: "1234567890",
-            appId: "1:1234567890:web:abcdef"
+            apiKey: "AIzaSyA-JsTYJ3rZiYOCg9ZxuPFnfMJxfNTe80Y",
+            authDomain: "sistem-kasir-c9b40.firebaseapp.com",
+            databaseURL: "https://sistem-kasir-c9b40-default-rtdb.firebaseio.com",
+            projectId: "sistem-kasir-c9b40",
+            storageBucket: "sistem-kasir-c9b40.firebasestorage.app",
+            messagingSenderId: "252030982454",
+            appId: "1:252030982454:web:ae42d7cfd0d23beadabb97",
+            measurementId: "G-G12887MBD6"
         };
 
-        // Inisialisasi Firebase
+        // Inisialisasi Firebase Realtime Database
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
         }
@@ -261,11 +261,6 @@
                                     <p class="text-xs font-bold text-white">${db.currentUser.role === 'karyawan' ? db.currentShift.employeeName : db.currentUser.name}</p>
                                     <span class="text-[10px] uppercase font-black px-2 py-0.5 bg-blue-800 text-blue-200 rounded-full">${db.currentUser.role === 'karyawan' ? 'Staff' : 'Admin'}</span>
                                 </div>
-                                ${db.currentUser.role === 'karyawan' ? `
-                                    <button onclick="openShiftReportForm()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm transition">
-                                        <i class="fa-solid fa-paper-plane mr-1"></i>Kirim Laporan Shift
-                                    </button>
-                                ` : ''}
                                 <button onclick="logoutApp()" class="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition">
                                     <i class="fa-solid fa-right-from-bracket"></i> Keluar
                                 </button>
@@ -312,7 +307,12 @@
             if (!mainEl) return;
 
             if (db.activeTab === "pos" && db.currentUser.role === 'karyawan') {
-                mainEl.innerHTML = `<h3>Halaman Kasir POS (Aktif)</h3>`;
+                mainEl.innerHTML = `
+                    <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs">
+                        <h3 class="font-black text-lg text-blue-900 uppercase mb-2"><i class="fa-solid fa-cash-register mr-2"></i>Halaman Kasir POS</h3>
+                        <p class="text-xs text-slate-500 font-semibold">Sistem POS Siap Digunakan untuk Outlet ${db.currentShift.outletName}.</p>
+                    </div>
+                `;
             } else if (db.activeTab === "admin_monitor" && db.currentUser.role === 'admin') {
                 mainEl.innerHTML = `
                     <div class="space-y-6">
